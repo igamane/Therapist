@@ -10,10 +10,10 @@ from io import BytesIO
 load_dotenv()
 
 # Set OpenAI API key
-openai.api_key = "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"
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Create a client instance
-client = openai.Client(api_key="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")
+client = openai.Client()
 
 def get_response(assistant_id):
     # Check if 'messages' key is not in session_state
