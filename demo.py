@@ -17,10 +17,10 @@ load_dotenv()
 doc = Document("The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx")
 
 # Set OpenAI API key
-openai.api_key = "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"
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Create a client instance
-client = openai.Client(api_key="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")
+client = openai.Client()
 
 # %%%%%%%%%%%%%%%%%% Document Updating Functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def add_paragraph_after_header(header_text, new_paragraph):
