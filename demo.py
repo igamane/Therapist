@@ -260,7 +260,7 @@ def send_to_openai(file):
         print(f"Error: {str(e)}")
 
 def main():
-    st.title('Tennis Oracle - AI Assistants')
+    st.title('Achilles - AI Assistants')
 
     # Initialize uploaded_files_list in st.session_state if it doesn't exist
     if "uploaded_files_list" not in st.session_state:
