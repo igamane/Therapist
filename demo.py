@@ -13,6 +13,8 @@ from docx.enum.text import WD_COLOR_INDEX
 #pip install google-api-python-client
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
+import json
+import sys
 
 
 # Load environment variables from .env file
@@ -22,10 +24,10 @@ load_dotenv()
 doc = Document("The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx")
 
 # Set OpenAI API key
-openai.api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = "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"
 
 # Create a client instance
-client = openai.Client()
+client = openai.Client(api_key="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")
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 SERVICE_ACCOUNT_FILE = 'client_secrets.json'
@@ -199,6 +201,22 @@ def add_new_section(header_text, section_content):
 
     return "Document update: new section has been added - tell the user what you have added"
 
+# Load assistant details from JSON file
+try:
+    with open('starter_questions.json', 'r') as json_file:
+        assistant_questions = json.load(json_file)
+except FileNotFoundError:
+    print("Error: starter_questions.json file not found.")
+    sys.exit(1)
+except json.JSONDecodeError:
+    print("Error: starter_questions.json is not a valid JSON file.")
+    sys.exit(1)
+
+# Function to update starter questions based on the assistant name
+def update_starter_questions(assistant_id):
+    for assistant, details in assistant_questions.items():
+        if details.get("id") == assistant_id:
+            return details.get("starter_questions", [])
 
 def get_response(assistant_id):
     # Check if 'messages' key is not in session_state
@@ -210,8 +228,49 @@ def get_response(assistant_id):
     # Display message content in the chat UI based on the role
         with st.chat_message(message["role"]):
             st.markdown(message["content"])    
+    if not st.session_state.get("starter_displayed", False):
+    # starter questions
+        starter_questions = update_starter_questions(assistant_id)
+        
+        placeholder = st.empty()
+
+        col1, col2 = placeholder.columns(2)
+
+        clicked_question = False
+
+        question_v = ""
+        with col1:
+            for idx, question in enumerate(starter_questions[:2]):
+                button_key = f"btn_col1_{idx + 1}"  # Unique key for column 1 buttons
+                if st.button(question, key=button_key):
+                    question_v = question
+                    clicked_question = True
+                    # Replace user prompt with the starter question when clicked
+                    break  # Exit the loop if a question is clicked
+
+        with col2:
+            for idx, question in enumerate(starter_questions[2:]):
+                button_key = f"btn_col2_{idx + 1}"  # Unique key for column 2 buttons
+                if st.button(question, key=button_key):
+                    question_v = question
+                    clicked_question = True
+                    # Replace user prompt with the starter question when clicked
+                    break  # Exit the loop if a question is clicked
+
+        if clicked_question:
+            placeholder.empty()
+            st.session_state.messages.append({"role": "user", "content": question_v})
+            with st.chat_message("user"):
+                st.markdown(question_v)
+            # Process the assistant's response using the starter question
+            st.session_state.starter_displayed = True
+            with st.spinner("Thinking..."):
+                getResponse(assistant_id, question_v)
     # Get user input from chat and proceed if a prompt is entered
     if prompt := st.chat_input("Enter your message here"):
+        if not st.session_state.get("starter_displayed", False):
+            placeholder.empty()
+            st.session_state.starter_displayed = True
         # Add user input as a message to session_state
         st.session_state.messages.append({"role": "user", "content": prompt})
         # Display user's message in the chat UI
@@ -220,6 +279,7 @@ def get_response(assistant_id):
         # Process the assistant's response
         with st.spinner("Thinking..."):
             getResponse(assistant_id, prompt)
+
 
 def getResponse(assistant_id, prompt):
     if "thread_id" not in st.session_state:
