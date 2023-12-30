@@ -218,8 +218,7 @@ def get_response(assistant_id):
         with st.chat_message("user"):
             st.markdown(prompt)
         # Process the assistant's response
-        with st.spinner("Thinking..."):
-            getResponse(assistant_id, prompt)
+        getResponse(assistant_id, prompt)
 
 def getResponse(assistant_id, prompt):
     if "thread_id" not in st.session_state:
