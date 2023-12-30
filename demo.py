@@ -22,10 +22,10 @@ load_dotenv()
 doc = Document("The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx")
 
 # Set OpenAI API key
-openai.api_key = "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"
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Create a client instance
-client = openai.Client(api_key="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")
+client = openai.Client()
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 SERVICE_ACCOUNT_FILE = 'client_secrets.json'
