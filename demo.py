@@ -424,6 +424,7 @@ def main():
     if assistant_name != "Select Category":
         # Reset the conversation & starter questions, if the assistant has been changed
         if st.session_state.get("current_assistant") != assistant_name:
+            st.session_state.starter_displayed = False
             st.session_state.messages = []
             st.session_state.current_assistant = assistant_name
         assistant_id = get_assistant_id(assistant_name)
