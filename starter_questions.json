@@ -1,0 +1,25 @@
+{
+    "Parent": {
+        "id": "asst_Gdc9ko8iWyvwlzpPo6PtJ0za",
+        "starter_questions": [
+            "Achilles said cookie today when climbing the cabinet",
+            "Create a thread regarding our concern about his sidewalk safety",
+            "Show me Achilles current communication chart"
+        ]
+    },
+    "Therapist": {
+        "id": "asst_VhOM66PyjKYgzdo01blWVisC",
+        "starter_questions": [
+            "Upload this months goals",
+            "Log my notes from today's therapy session"
+        ]
+    },
+    "Teacher": {
+        "id": "asst_HCYh7jTvoHP5IeuTl078JFpu",
+        "starter_questions": [
+            "Show me Achilles current Calm down strategy",
+            "Make a note about Achilles from class today",
+            "Show me what our primary goals are for this week"
+        ]
+    }
+}
