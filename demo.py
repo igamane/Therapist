@@ -8,6 +8,11 @@ from io import BytesIO
 from docx import Document
 from docx.shared import Pt
 from docx.enum.style import WD_STYLE_TYPE
+from docx.shared import RGBColor
+from docx.enum.text import WD_COLOR_INDEX
+#pip install google-api-python-client
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
 
 
 # Load environment variables from .env file
@@ -17,10 +22,55 @@ load_dotenv()
 doc = Document("The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx")
 
 # Set OpenAI API key
-openai.api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = "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"
 
 # Create a client instance
-client = openai.Client()
+client = openai.Client(api_key="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")
+
+SCOPES = ['https://www.googleapis.com/auth/drive']
+SERVICE_ACCOUNT_FILE = 'client_secrets.json'
+PARENT_FOLDER_ID = "18Jc4eTPrOwvpKHa4CXFCVLVUQqaqbkTt"
+
+def authenticate():
+    creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    return creds
+
+def find_file_id(service, file_name):
+    results = service.files().list(
+        q=f"name='{file_name}' and parents in '{PARENT_FOLDER_ID}' and trashed=false",
+        fields="files(id)"
+    ).execute()
+    items = results.get('files', [])
+    if items:
+        return items[0]['id']
+    else:
+        return None
+
+def delete_file(service, file_id):
+    service.files().delete(fileId=file_id).execute()
+
+def upload_file(file_path):
+    creds = authenticate()
+    service = build('drive', 'v3', credentials=creds)
+
+    file_name = "The Achilles Guide to the Galaxy aka Communication Passport"  # Replace with the desired file name
+    existing_file_id = find_file_id(service, file_name)
+
+    if existing_file_id:
+        delete_file(service, existing_file_id)
+        print(f"Existing file '{file_name}' deleted.")
+
+    file_metadata = {
+        'name': file_name,
+        'parents': [PARENT_FOLDER_ID]
+    }
+
+    file = service.files().create(
+        body=file_metadata,
+        media_body=file_path
+    ).execute()
+
+    print(f"File '{file_name}' uploaded successfully.")
 
 # %%%%%%%%%%%%%%%%%% Document Updating Functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def add_paragraph_after_header(header_text, new_paragraph):
@@ -29,10 +79,16 @@ def add_paragraph_after_header(header_text, new_paragraph):
         if header_text in paragraph.text:
             found_header = True
         elif found_header:
-            doc.paragraphs[idx].insert_paragraph_before(new_paragraph)
+             # Insert the new paragraph after the found header
+            new_para = doc.paragraphs[idx].insert_paragraph_before(new_paragraph)
+            
+            # Highlight the added paragraph in yellow
+            for run in new_para.runs:
+                run.font.highlight_color = WD_COLOR_INDEX.YELLOW
             # Add a paragraph with no text after the table to create space
             doc.add_paragraph()
             doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+            upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
             return f"Document update: the paragraph has been added after the header'{header_text}' - tell the user what you have added"
 
     if not found_header:
@@ -48,11 +104,21 @@ def add_row_to_table_by_index(table_index, row_data):
 
     # Add a row to the table with the specified data
     new_row = table.add_row().cells
-    for i, cell_data in enumerate(row_data):
-        new_row[i].text = str(cell_data)
-    doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-    return "Document update: row has been added to the table - tell the user what you have added"
+    try:
+        for i, cell_data in enumerate(row_data):
+            new_row[i].text = str(cell_data)
 
+            # Highlight the added cell content in yellow
+            for paragraph in new_row[i].paragraphs:
+                for run in paragraph.runs:
+                    run.font.highlight_color = WD_COLOR_INDEX.YELLOW
+    except IndexError:
+        return "The column count is out of the table range."
+    # Handle the out of range column scenario as per your requirement
+
+    doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+    upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+    return "Document update: row has been added to the table - draw the row you have added to the user"
 
 def create_new_table(data):
     num_rows = len(data)
@@ -74,10 +140,19 @@ def create_new_table(data):
         for j in range(num_cols):
             cell = table.cell(i, j)
             cell.text = str(data[i][j])  # Set the text for each cell
+            
+            # Highlight the added cell content in yellow
+            for paragraph in cell.paragraphs:
+                for run in paragraph.runs:
+                    run.font.highlight_color = WD_COLOR_INDEX.YELLOW
+
+            if i == 0:  # Bold the text in the first row
+                cell.paragraphs[0].runs[0].bold = True
 
     # Add a paragraph with no text after the table to create space
     doc.add_paragraph()
     doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+    upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
 
     return "Document update: table has been created - tell the user the table content"
 
@@ -119,6 +194,7 @@ def add_new_section(header_text, section_content):
     # Add a paragraph with no text after the table to create space
     doc.add_paragraph()
     doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+    upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
 
     return "Document update: new section has been added - tell the user what you have added"
 
@@ -176,7 +252,7 @@ def getResponse(assistant_id, prompt):
 
     while True:
         # Wait for 5 seconds
-        time.sleep(5)
+        time.sleep(0.5)
 
         # Retrieve the run status
         run_status = client.beta.threads.runs.retrieve(
@@ -186,6 +262,9 @@ def getResponse(assistant_id, prompt):
         print(run_status.status)
         # If run is completed, get messages
         if run_status.status == 'completed':
+            break
+        elif run_status.status == 'failed':
+            print(run_status)
             break
         elif run_status.status == 'requires_action':
             required_actions = run_status.required_action.submit_tool_outputs.model_dump()
@@ -218,7 +297,7 @@ def getResponse(assistant_id, prompt):
                 tool_outputs=tool_outputs
             )
         else:
-            time.sleep(5)
+            time.sleep(0.5)
 
     messages = client.beta.threads.messages.list(
         thread_id=thread_id
@@ -260,7 +339,7 @@ def send_to_openai(file):
         print(f"Error: {str(e)}")
 
 def main():
-    st.title('Achilles - AI Assistants')
+    st.title('Achilles AI assistant')
 
     # Initialize uploaded_files_list in st.session_state if it doesn't exist
     if "uploaded_files_list" not in st.session_state:
