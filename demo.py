@@ -175,7 +175,10 @@ def add_new_section(header_text, section_content):
     # Check if '**' exists in the section_content
     if '**' not in section_content:
         # If '**' is not present, add the entire section as regular text
-        doc.add_paragraph(section_content)
+        p = doc.add_paragraph(section_content)
+        # Highlight entire section in yellow
+        for run in p.runs:
+            run.font.highlight_color = WD_COLOR_INDEX.YELLOW
     else:
         # Split the section content by '**'
         sections = section_content.split('**')
@@ -183,13 +186,11 @@ def add_new_section(header_text, section_content):
         # Add content for the new section
         for i, text in enumerate(sections):
             p = doc.add_paragraph()
-            if i % 2 == 0:
-                # Non-bold text
-                p.add_run(text)
-            else:
-                # Bold text
-                run = p.add_run(text)
-                run.font.bold = True
+            p.add_run(text)
+
+            # Highlight the added section in yellow
+            for run in p.runs:
+                run.font.highlight_color = WD_COLOR_INDEX.YELLOW
 
     # Add a paragraph with no text after the table to create space
     doc.add_paragraph()
@@ -197,6 +198,7 @@ def add_new_section(header_text, section_content):
     upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
 
     return "Document update: new section has been added - tell the user what you have added"
+
 
 def get_response(assistant_id):
     # Check if 'messages' key is not in session_state
