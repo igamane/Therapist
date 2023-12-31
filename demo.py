@@ -120,7 +120,7 @@ def add_row_to_table_by_index(table_index, row_data):
 
     doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
     upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-    return "Document update: row has been added to the table - draw the row you have added to the user"
+    return "Document update: row has been added to the table - draw a visual table row that you have added to the user"
 
 def create_new_table(data):
     num_rows = len(data)
