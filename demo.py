@@ -10,7 +10,6 @@ from docx.shared import Pt
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import RGBColor
 from docx.enum.text import WD_COLOR_INDEX
-#pip install google-api-python-client
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 import json
@@ -20,18 +19,20 @@ import sys
 # Load environment variables from .env file
 load_dotenv()
 
-# Load the Word document using the absolute path
-doc = Document("The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx")
-
 # Set OpenAI API key
-openai.api_key = os.getenv('OPENAI_API_KEY')
+openai.api_key = os.getenv("OPENAI_API_KEY")
+document_file = os.getenv("DOCUMENT_FILE")
+FOLDER_ID = os.getenv("FOLDER_ID")
+drive_file_name = os.getenv("DRIVE_FILE_NAME")
+
+# Load the Word document using the absolute path
+doc = Document(document_file)
 
 # Create a client instance
 client = openai.Client()
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 SERVICE_ACCOUNT_FILE = 'client_secrets.json'
-PARENT_FOLDER_ID = "18Jc4eTPrOwvpKHa4CXFCVLVUQqaqbkTt"
 
 def authenticate():
     creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
@@ -39,7 +40,7 @@ def authenticate():
 
 def find_file_id(service, file_name):
     results = service.files().list(
-        q=f"name='{file_name}' and parents in '{PARENT_FOLDER_ID}' and trashed=false",
+        q=f"name='{file_name}' and parents in '{FOLDER_ID}' and trashed=false",
         fields="files(id)"
     ).execute()
     items = results.get('files', [])
@@ -55,7 +56,7 @@ def upload_file(file_path):
     creds = authenticate()
     service = build('drive', 'v3', credentials=creds)
 
-    file_name = "The Achilles Guide to the Galaxy aka Communication Passport"  # Replace with the desired file name
+    file_name = drive_file_name  # Replace with the desired file name
     existing_file_id = find_file_id(service, file_name)
 
     if existing_file_id:
@@ -64,7 +65,7 @@ def upload_file(file_path):
 
     file_metadata = {
         'name': file_name,
-        'parents': [PARENT_FOLDER_ID]
+        'parents': [FOLDER_ID]
     }
 
     file = service.files().create(
@@ -89,8 +90,8 @@ def add_paragraph_after_header(header_text, new_paragraph):
                 run.font.highlight_color = WD_COLOR_INDEX.YELLOW
             # Add a paragraph with no text after the table to create space
             doc.add_paragraph()
-            doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-            upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+            doc.save(document_file)
+            upload_file(document_file)
             return f"Document update: the paragraph has been added after the header'{header_text}' - tell the user what you have added"
 
     if not found_header:
@@ -118,9 +119,9 @@ def add_row_to_table_by_index(table_index, row_data):
         return "The column count is out of the table range."
     # Handle the out of range column scenario as per your requirement
 
-    doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-    upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-    return "Document update: row has been added to the table - draw a visual table row that you have added to the user"
+    doc.save(document_file)
+    upload_file(document_file)
+    return "Document update: row has been added to the table - draw the row you have added to the user"
 
 def create_new_table(data):
     num_rows = len(data)
@@ -153,8 +154,8 @@ def create_new_table(data):
 
     # Add a paragraph with no text after the table to create space
     doc.add_paragraph()
-    doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-    upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+    doc.save(document_file)
+    upload_file(document_file)
 
     return "Document update: table has been created - tell the user the table content"
 
@@ -196,8 +197,8 @@ def add_new_section(header_text, section_content):
 
     # Add a paragraph with no text after the table to create space
     doc.add_paragraph()
-    doc.save('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
-    upload_file('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx')
+    doc.save(document_file)
+    upload_file(document_file)
 
     return "Document update: new section has been added - tell the user what you have added"
 
@@ -338,7 +339,6 @@ def getResponse(assistant_id, prompt):
                 arguments = json.loads(action['function']['arguments'])
                 print(func_name)
                 print(arguments)
-                print("999999999999999")
 
                 func = function_dispatch_table.get(func_name)
 
@@ -373,13 +373,10 @@ def getResponse(assistant_id, prompt):
         message_placeholder = st.empty()
         message_placeholder.markdown(last_message)
 
+with open('assistants.json') as json_file:
+    assistant_id_map = json.load(json_file)
+
 def get_assistant_id(assistant_name):
-    assistant_id_map = {
-        "Parent": "asst_Gdc9ko8iWyvwlzpPo6PtJ0za",
-        "Therapist": "asst_VhOM66PyjKYgzdo01blWVisC",
-        "Teacher": "asst_HCYh7jTvoHP5IeuTl078JFpu",
-    }
-    
     return assistant_id_map.get(assistant_name)
 
 def send_to_openai(file):
@@ -401,16 +398,11 @@ def send_to_openai(file):
     except Exception as e:
         print(f"Error: {str(e)}")
 
-def main():
-    st.title('Achilles AI assistant')
-
-    # Initialize uploaded_files_list in st.session_state if it doesn't exist
-    if "uploaded_files_list" not in st.session_state:
-        st.session_state.uploaded_files_list = []
-        st.session_state.sent_files = set()
+def parentPage():
+    st.title('Parent AI assistant')
 
     st.sidebar.title("Document Processing")
-    assistant_name = st.sidebar.selectbox('Choose an assistant', ["Select Category", "Parent", "Therapist", "Teacher"])
+    assistant_name = "Parent"
     uploaded_files = st.sidebar.file_uploader("Upload files", accept_multiple_files=True)
 
     if uploaded_files:
@@ -428,13 +420,111 @@ def main():
             st.session_state.messages = []
             st.session_state.current_assistant = assistant_name
         assistant_id = get_assistant_id(assistant_name)
+        print(assistant_id)
         get_response(assistant_id)
 
     # Add download button for myfile.csv
-    with open('The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx', 'rb') as f:
-        st.sidebar.download_button('Download The Updated Achilles Guide', f, file_name='The-Achilles-Guide-to-the-Galaxy-aka-Communication-Passport.docx', mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    with open(document_file, 'rb') as f:
+        st.sidebar.download_button('Download The Updated Achilles Guide', f, file_name=document_file, mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
    
+    if st.sidebar.button("Return to Main Page"):
+        st.session_state.runpage = main_page
+        st.rerun()
 
-# Call the main function to run the app
+def therapistPage():
+    st.title('Therapist AI assistant')
+
+    st.sidebar.title("Document Processing")
+    assistant_name = "Therapist"
+    uploaded_files = st.sidebar.file_uploader("Upload files", accept_multiple_files=True)
+
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            file_identifier = uploaded_file.name
+            if file_identifier not in st.session_state.sent_files:
+                retrieval_file = send_to_openai(uploaded_file)
+                st.session_state.uploaded_files_list.append(retrieval_file.id)  # Store uploaded file in session_state
+                st.session_state.sent_files.add(file_identifier)
+
+    if assistant_name != "Select Category":
+        # Reset the conversation & starter questions, if the assistant has been changed
+        if st.session_state.get("current_assistant") != assistant_name:
+            st.session_state.starter_displayed = False
+            st.session_state.messages = []
+            st.session_state.current_assistant = assistant_name
+        assistant_id = get_assistant_id(assistant_name)
+        print(assistant_id)
+        get_response(assistant_id)
+
+    # Add download button for myfile.csv
+    with open(document_file, 'rb') as f:
+        st.sidebar.download_button('Download The Updated Achilles Guide', f, file_name=document_file, mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+   
+    if st.sidebar.button("Return to Main Page"):
+        st.session_state.runpage = main_page
+        st.rerun()
+
+def teacherPage():
+    st.title('Teacher AI assistant')
+
+    st.sidebar.title("Document Processing")
+    assistant_name = "Teacher"
+    uploaded_files = st.sidebar.file_uploader("Upload files", accept_multiple_files=True)
+
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            file_identifier = uploaded_file.name
+            if file_identifier not in st.session_state.sent_files:
+                retrieval_file = send_to_openai(uploaded_file)
+                st.session_state.uploaded_files_list.append(retrieval_file.id)  # Store uploaded file in session_state
+                st.session_state.sent_files.add(file_identifier)
+
+    if assistant_name != "Select Category":
+        # Reset the conversation & starter questions, if the assistant has been changed
+        if st.session_state.get("current_assistant") != assistant_name:
+            st.session_state.starter_displayed = False
+            st.session_state.messages = []
+            st.session_state.current_assistant = assistant_name
+        assistant_id = get_assistant_id(assistant_name)
+        print(assistant_id)
+        get_response(assistant_id)
+
+    # Add download button for myfile.csv
+    with open(document_file, 'rb') as f:
+        st.sidebar.download_button('Download The Updated Achilles Guide', f, file_name=document_file, mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+   
+    if st.sidebar.button("Return to Main Page"):
+        st.session_state.runpage = main_page
+        st.rerun()
+
+def main_page():
+    st.title("Select a profile")
+    btn1 = st.button("Parent")
+    btn2 = st.button("Therapist")
+    btn3 = st.button("Teacher")
+
+    if btn1:
+        st.session_state.runpage = parentPage
+        st.rerun()
+
+    if btn2:
+        st.session_state.runpage = therapistPage
+        st.rerun()
+    
+    if btn3:
+        st.session_state.runpage = teacherPage
+        st.rerun()
+
+def main():
+    if 'runpage' not in st.session_state:
+        st.session_state.runpage = main_page
+
+    # Initialize uploaded_files_list in st.session_state if it doesn't exist
+    if "uploaded_files_list" not in st.session_state:
+        st.session_state.uploaded_files_list = []
+        st.session_state.sent_files = set()
+
+    st.session_state.runpage()
+
 if __name__ == "__main__":
     main()
